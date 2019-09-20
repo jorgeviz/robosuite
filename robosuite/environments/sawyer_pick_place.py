@@ -596,14 +596,14 @@ class SawyerPickPlace(SawyerEnv):
         rob2obj = O2ORelation(robp, objp)
         # Append States
         _state['obj'] = {
-            'bbox': obj_bbox, 
+            'bbox': np.array(obj_bbox), 
             'pos': obs[self.obj_to_use+'_pos'],
             'quat': obs[self.obj_to_use+'_quat'],
             'state': obs['object-state'],
             "encoding" : objp.encoding
         }
         _state['eef'] = {
-            'bbox': eef_bbox, 
+            'bbox': np.array(eef_bbox), 
             'pos': obs['eef_pos'],
             'quat': obs['eef_quat'],
             'state': obs['robot-state'],
@@ -625,20 +625,28 @@ class SawyerPickPlace(SawyerEnv):
     
     def gen_graph_tuple(self, _st, _img):
         """ Generate graph tuple 
-            i.e. (node_attrs, edge_attrs, image)
-            where 
-                node_attrs: [
-                    np.concatenate([<position>,<orientation>,<object_one_hot>]),  # For End efector
-                    np.concatenate([<position>,<orientation>,<object_one_hot>])  # For each Object in scene
-                ],
-                edge_attrs : [
-                    np.concatenate([<relation_one_hot>,<relation_one_hot>]) # For each object-eef interaction
-                ],
-                image : np.array([...])
+
+            Returns
+            ----
+            tuple
+                (node_attrs, edge_attrs, image)
+                where 
+                    node_attrs: [
+                        np.concatenate([<position>,<orientation>,
+                            <object_one_hot>,<object_bbox>]),  # For End efector
+                        np.concatenate([<position>,<orientation>,
+                            <object_one_hot>,<object_bbox>])  # For each Object in scene
+                    ],
+                    edge_attrs : [
+                        np.concatenate([<relation_one_hot>,<relation_one_hot>]) # For each object-eef interaction
+                    ],
+                    image : np.array([...])
         """
         node_attrs = np.array([
-            np.concatenate((_st['eef']['pos'], _st['eef']['quat'], _st['eef']['encoding'])),
-            np.concatenate((_st['obj']['pos'], _st['obj']['quat'], _st['obj']['encoding']))
+            np.concatenate((_st['eef']['pos'], _st['eef']['quat'], 
+                            _st['eef']['encoding'], _st['eef']['bbox'])),
+            np.concatenate((_st['obj']['pos'], _st['obj']['quat'], 
+                            _st['obj']['encoding'], _st['obj']['bbox']))
         ])
         edge_attrs = []
         for f_idx in range(len(node_attrs)):
@@ -684,7 +692,8 @@ class SawyerPickPlace(SawyerEnv):
         if not self.use_camera_obs or not self.use_object_obs:
             raise Exception("Enable `use_camera_obs` and `use_object_obs`!")
         # Add graph relation computation
-        return self.process_obs(_reset_obs)
+        _reset_obs['graph'] =  self.process_obs(_reset_obs)
+        return _reset_obs
 
     def step(self, actions):
         """ Step with EEF - Object graph relation computation  
@@ -694,13 +703,13 @@ class SawyerPickPlace(SawyerEnv):
             tuple
                 (node_attrs, edge_attrs, image)  # Same as @self.reset
         """
-        _step = super().step()
+        _step_obs, rew, _done, _ = super().step(actions)
         # Image and states existance
         if not self.use_camera_obs or not self.use_object_obs:
             raise Exception("Enable `use_camera_obs` and `use_object_obs`!")
         # Add graph relation computaton
-        print("Cmputing graph relations")
-        return _step
+        _step_obs['graph'] = self.process_obs(_step_obs)
+        return _step_obs, rew, _done, _
 
 class SawyerPickPlaceSingle(SawyerPickPlace):
     """

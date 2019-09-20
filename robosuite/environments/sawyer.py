@@ -440,7 +440,7 @@ class SawyerEnv(MujocoEnv):
 
             Returns
             -----
-            np.array
+            tuple
                 Bounding box
         """
         samp_points = []
