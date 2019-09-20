@@ -732,7 +732,10 @@ class SawyerPickPlaceMilk(SawyerPickPlace):
             "single_object_mode" not in kwargs and "object_type" not in kwargs
         ), "invalid set of arguments"
         super().__init__(single_object_mode=2, object_type="milk", **kwargs)
-
+        # Add Object instance mujoco model
+        self.obj_model = self.mujoco_objects[self.obj_to_use].get_model()
+        # Add Sawyer instance mujoco model
+        self.sawy_model = self.mujoco_robot.get_model() 
 
 class SawyerPickPlaceBread(SawyerPickPlace):
     """
@@ -744,7 +747,10 @@ class SawyerPickPlaceBread(SawyerPickPlace):
             "single_object_mode" not in kwargs and "object_type" not in kwargs
         ), "invalid set of arguments"
         super().__init__(single_object_mode=2, object_type="bread", **kwargs)
-
+        # Add Object instance mujoco model
+        self.obj_model = self.mujoco_objects[self.obj_to_use].get_model()
+        # Add Sawyer instance mujoco model
+        self.sawy_model = self.mujoco_robot.get_model() 
 
 class SawyerPickPlaceCereal(SawyerPickPlace):
     """
@@ -756,7 +762,10 @@ class SawyerPickPlaceCereal(SawyerPickPlace):
             "single_object_mode" not in kwargs and "object_type" not in kwargs
         ), "invalid set of arguments"
         super().__init__(single_object_mode=2, object_type="cereal", **kwargs)
-
+        # Add Object instance mujoco model
+        self.obj_model = self.mujoco_objects[self.obj_to_use].get_model()
+        # Add Sawyer instance mujoco model
+        self.sawy_model = self.mujoco_robot.get_model() 
 
 class SawyerPickPlaceCan(SawyerPickPlace):
     """
