@@ -1,5 +1,7 @@
 from collections import OrderedDict
 import numpy as np
+import cv2
+import math
 
 import robosuite.utils.transform_utils as T
 from robosuite.environments import MujocoEnv
@@ -12,23 +14,23 @@ class SawyerEnv(MujocoEnv):
     """Initializes a Sawyer robot environment."""
 
     def __init__(
-        self,
-        gripper_type=None,
-        gripper_visualization=False,
-        use_indicator_object=False,
-        has_renderer=False,
-        has_offscreen_renderer=True,
-        render_collision_mesh=False,
-        render_visual_mesh=True,
-        control_freq=10,
-        horizon=1000,
-        ignore_done=False,
-        use_camera_obs=False,
-        camera_name="frontview",
-        camera_height=256,
-        camera_width=256,
-        camera_depth=False,
-    ):
+            self,
+            gripper_type=None,
+            gripper_visualization=False,
+            use_indicator_object=False,
+            has_renderer=False,
+            has_offscreen_renderer=True,
+            render_collision_mesh=False,
+            render_visual_mesh=True,
+            control_freq=10,
+            horizon=1000,
+            ignore_done=False,
+            use_camera_obs=False,
+            camera_name="frontview",
+            camera_height=256,
+            camera_width=256,
+            camera_depth=False,
+            ):
         """
         Args:
             gripper_type (str): type of gripper, used to instantiate
@@ -418,3 +420,85 @@ class SawyerEnv(MujocoEnv):
         Returns True if the gripper is in contact with another object.
         """
         return False
+
+    def find_bbox(self, ppos, rd, avoid_axis=[], scale_axis=[]):
+        """ Find Bounding box through the mapped sphere
+
+            Args
+            -----
+            env: robosuite.environments.<task_module>.<Task_Class>
+                Task Environment
+            ppos: np.array
+                Point position
+            rd: float
+                Bounding Sphere radius
+            avoid_axis : list
+                Avoid to generate sample boxes in the 
+                axis direction (e.g. [1,-1,2]) 
+            scale_axis : list
+                Scale axis to compensate sides in Bboxes
+
+            Returns
+            -----
+            np.array
+                Bounding box
+        """
+        samp_points = []
+        for _k in range(3):
+            for _sg in range(-1,2,2):
+                if (_sg * (_k+1)) in avoid_axis:
+                    continue
+                if (_sg * (_k+1)) in scale_axis:
+                    srd = 2*rd
+                else:
+                    srd = rd
+                _tv = np.zeros((3,))
+                _tv[_k] = _sg * srd
+                samp_points.append(
+                    ppos + _tv
+                )
+        # Map sampled contour
+        mapped_cntr = np.array([
+            self.point_3d_to_2d(sp) for sp in samp_points])
+        # Generate bbox
+        px,py, _w, _h = cv2.boundingRect(mapped_cntr)
+        return  px, py, px+_w, py+_h
+
+    def point_3d_to_2d(self, p):
+        """ Convert 3D Point into a 2D point in camera perspective
+
+            Args
+            ----
+            env : robosuite.environments.<task_module>.<Task_Class>
+                Task Environment
+            p: np.array
+                Point in 3D with respect of world frame
+            
+            Returns
+            ----
+            np.array 
+                Mapped point to 2D in camera perspective
+        """
+        p = p.astype(np.float32)
+        # Fetch camera paramsç
+        _cam = self.sim.model.camera_name2id(self.camera_name)
+        camera_pos = self.sim.model.cam_pos[_cam]  # Camera posistion in world frame
+        camera_mat = self.sim.model.cam_mat0[_cam].reshape(3, 3)
+        camera_fovy = self.sim.model.cam_fovy[_cam]
+        # Compute relative position between p and camera position
+        p = p - camera_pos
+        # Perspective computation
+        new_p = np.matmul(camera_mat.T, p)
+        z = new_p[2]
+        new_p = new_p / z
+        col, row = -new_p[0], new_p[1]
+        # Angle adjustment
+        h = math.tan(camera_fovy / 2 * math.pi / 180)
+        # Scaling factor
+        col *= float(self.camera_width) / h * 0.5
+        row *= float(self.camera_width) / h * 0.5
+        col += self.camera_width/ 2.
+        row += self.camera_height / 2.
+        return int(col), int(row)
+
+    

@@ -8,6 +8,8 @@ setup(
     ],
     install_requires=[
         "numpy>=1.13.3",
+        "scipy>=1.3.1",
+        "opencv-python>=3.4.3.18",
         # "mujoco-py<1.50.2,>=1.50.1",
     ],
     eager_resources=['*'],

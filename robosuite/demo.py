@@ -31,7 +31,8 @@ if __name__ == "__main__":
         envs[k],
         has_renderer=True,
         ignore_done=True,
-        use_camera_obs=False,
+        use_camera_obs=True,
+        use_object_obs=True,
         control_freq=100,
     )
     _ = env.reset()

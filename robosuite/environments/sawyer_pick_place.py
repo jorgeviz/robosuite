@@ -21,6 +21,8 @@ from robosuite.models.objects import (
 )
 from robosuite.models.robots import Sawyer
 from robosuite.models.tasks import PickPlaceTask, UniformRandomSampler
+from robosuite.models.relation import SpatialObject as SO
+from robosuite.models.relation import O2ORelation
 
 
 class SawyerPickPlace(SawyerEnv):
@@ -125,6 +127,7 @@ class SawyerPickPlace(SawyerEnv):
         # task settings
         self.single_object_mode = single_object_mode
         self.object_to_id = {"milk": 0, "bread": 1, "cereal": 2, "can": 3}
+        self.object_type = object_type
         if object_type is not None:
             assert (
                 object_type in self.object_to_id.keys()
@@ -560,6 +563,97 @@ class SawyerPickPlace(SawyerEnv):
             rgba[1] = scaled
             rgba[3] = 0.5
             self.sim.model.site_rgba[self.eef_site_id] = rgba
+
+    def process_obs(self, obs):
+        """ Process state observation
+            - Parse eef position and generate BBox
+            - Parse obj position and generate BBox
+            - Compute relationship based on euclidean rules
+            - Append state info to state accumulator
+            - Append image into video accumulator
+
+            Args
+            -----
+            obs : collections.OrderedDict
+                Observations attributes (image, joint pos, etc)
+        """
+        # Fetch object sphere radius
+        r_ob_sph = self.obj_model.geom_rbound[0]
+        r_saw_sphs = np.array([
+                    self.sawy_model.geom_rbound[ self.sawy_model.geom_name2id(_ns) 
+                ] \
+                for _ns  in self.sawy_model.geom_names
+        ])
+        _state = {}
+        # Bbox computation
+        obj_bbox = self.find_bbox(obs[self.obj_to_use+'_pos'], r_ob_sph)
+        eef_bbox =  self.find_bbox(obs['eef_pos'], r_saw_sphs.max(), 
+            avoid_axis=[-3], scale_axis=[3])
+        # Compute relationships
+        robp = SO("eef", obs['eef_pos'], obs['eef_quat'], is_robot=True)
+        objp = SO(self.object_type, obs[self.obj_to_use+'_pos'], 
+                obs[self.obj_to_use+'_quat'])
+        rob2obj = O2ORelation(robp, objp)
+        # Append States
+        _state['obj'] = {
+            'bbox': obj_bbox, 
+            'pos': obs[self.obj_to_use+'_pos'],
+            'quat': obs[self.obj_to_use+'_quat'],
+            'state': obs['object-state'],
+            "encoding" : objp.encoding
+        }
+        _state['eef'] = {
+            'bbox': eef_bbox, 
+            'pos': obs['eef_pos'],
+            'quat': obs['eef_quat'],
+            'state': obs['robot-state'],
+            'encoding': robp.encoding
+        }
+        _state['relation'] = {
+            "state": rob2obj.rep,
+            "meaning": rob2obj.decode()
+        }
+        if 'image' not in obs:
+            print("[WARNING] Not generating any image data!")
+            _img = np.empty((CAMERA['height'], CAMERA['width'], 3))
+        # Flip colors order and put image upside down
+        _img =  np.flipud(
+            np.flip(obs['image'],2) 
+            ).copy()
+        # Accumulate State
+        return self.gen_graph_tuple(_state, _img)
+    
+    def gen_graph_tuple(self, _st, _img):
+        """ Generate graph tuple 
+            i.e. (node_attrs, edge_attrs, image)
+            where 
+                node_attrs: [
+                    np.concatenate([<position>,<orientation>,<object_one_hot>]),  # For End efector
+                    np.concatenate([<position>,<orientation>,<object_one_hot>])  # For each Object in scene
+                ],
+                edge_attrs : [
+                    np.concatenate([<relation_one_hot>,<relation_one_hot>]) # For each object-eef interaction
+                ],
+                image : np.array([...])
+        """
+        node_attrs = np.array([
+            np.concatenate((_st['eef']['pos'], _st['eef']['quat'], _st['eef']['encoding'])),
+            np.concatenate((_st['obj']['pos'], _st['obj']['quat'], _st['obj']['encoding']))
+        ])
+        edge_attrs = []
+        for f_idx in range(len(node_attrs)):
+            for s_idx in range(len(node_attrs)):
+                # Omit for autoreferencing object 
+                if f_idx == s_idx:
+                    continue
+                # Set EEF to OBJ directed edge
+                if f_idx == 0 and s_idx == 1:
+                    edge_attrs.append(_st['relation']['state'])
+                else:
+                    # Zero-vector for any other case
+                    edge_attrs.append(O2ORelation.zeros()) 
+        edge_attrs = np.array(edge_attrs)
+        return tuple([node_attrs, edge_attrs, _img])
     
     def reset(self):
         """ Reset with EEF - Object graph relations computation
@@ -585,10 +679,12 @@ class SawyerPickPlace(SawyerEnv):
                     ],
                     image : np.array([...])
         """
-        _reset = super().reset()
+        _reset_obs = super().reset()
+        # Image and states existance
+        if not self.use_camera_obs or not self.use_object_obs:
+            raise Exception("Enable `use_camera_obs` and `use_object_obs`!")
         # Add graph relation computation
-        print("Computing graph relations")
-        return _reset
+        return self.process_obs(_reset_obs)
 
     def step(self, actions):
         """ Step with EEF - Object graph relation computation  
@@ -599,6 +695,9 @@ class SawyerPickPlace(SawyerEnv):
                 (node_attrs, edge_attrs, image)  # Same as @self.reset
         """
         _step = super().step()
+        # Image and states existance
+        if not self.use_camera_obs or not self.use_object_obs:
+            raise Exception("Enable `use_camera_obs` and `use_object_obs`!")
         # Add graph relation computaton
         print("Cmputing graph relations")
         return _step
@@ -660,3 +759,7 @@ class SawyerPickPlaceCan(SawyerPickPlace):
             "single_object_mode" not in kwargs and "object_type" not in kwargs
         ), "invalid set of arguments"
         super().__init__(single_object_mode=2, object_type="can", **kwargs)
+        # Add Object instance mujoco model
+        self.obj_model = self.mujoco_objects[self.obj_to_use].get_model()
+        # Add Sawyer instance mujoco model
+        self.sawy_model = self.mujoco_robot.get_model() 
