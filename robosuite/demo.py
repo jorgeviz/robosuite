@@ -34,7 +34,7 @@ if __name__ == "__main__":
         use_camera_obs=False,
         control_freq=100,
     )
-    env.reset()
+    _ = env.reset()
     env.viewer.set_camera(camera_id=0)
 
     # do visualization

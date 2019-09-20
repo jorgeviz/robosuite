@@ -8,7 +8,7 @@ setup(
     ],
     install_requires=[
         "numpy>=1.13.3",
-        "mujoco-py<1.50.2,>=1.50.1",
+        # "mujoco-py<1.50.2,>=1.50.1",
     ],
     eager_resources=['*'],
     include_package_data=True,

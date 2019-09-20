@@ -48,81 +48,80 @@ class SawyerPickPlace(SawyerEnv):
         camera_height=256,
         camera_width=256,
         camera_depth=False,
-    ):
+        ):
         """
-        Args:
+            Args:
 
-            gripper_type (str): type of gripper, used to instantiate
-                gripper models from gripper factory.
+                gripper_type (str): type of gripper, used to instantiate
+                    gripper models from gripper factory.
 
-            table_full_size (3-tuple): x, y, and z dimensions of the table.
+                table_full_size (3-tuple): x, y, and z dimensions of the table.
 
-            table_friction (3-tuple): the three mujoco friction parameters for
-                the table.
+                table_friction (3-tuple): the three mujoco friction parameters for
+                    the table.
 
-            use_camera_obs (bool): if True, every observation includes a
-                rendered image.
+                use_camera_obs (bool): if True, every observation includes a
+                    rendered image.
 
-            use_object_obs (bool): if True, include object (cube) information in
-                the observation.
+                use_object_obs (bool): if True, include object (cube) information in
+                    the observation.
 
-            reward_shaping (bool): if True, use dense rewards.
+                reward_shaping (bool): if True, use dense rewards.
 
-            placement_initializer (ObjectPositionSampler instance): if provided, will
-                be used to place objects on every reset, else a UniformRandomSampler
-                is used by default.
+                placement_initializer (ObjectPositionSampler instance): if provided, will
+                    be used to place objects on every reset, else a UniformRandomSampler
+                    is used by default.
 
-            single_object_mode (int): specifies which version of the task to do. Note that
-                the observations change accordingly.
+                single_object_mode (int): specifies which version of the task to do. Note that
+                    the observations change accordingly.
 
-                0: corresponds to the full task with all types of objects.
+                    0: corresponds to the full task with all types of objects.
 
-                1: corresponds to an easier task with only one type of object initialized
-                   on the table with every reset. The type is randomized on every reset.
+                    1: corresponds to an easier task with only one type of object initialized
+                    on the table with every reset. The type is randomized on every reset.
 
-                2: corresponds to an easier task with only one type of object initialized
-                   on the table with every reset. The type is kept constant and will not
-                   change between resets.
+                    2: corresponds to an easier task with only one type of object initialized
+                    on the table with every reset. The type is kept constant and will not
+                    change between resets.
 
-            object_type (string): if provided, should be one of "milk", "bread", "cereal",
-                or "can". Determines which type of object will be spawned on every
-                environment reset. Only used if @single_object_mode is 2.
+                object_type (string): if provided, should be one of "milk", "bread", "cereal",
+                    or "can". Determines which type of object will be spawned on every
+                    environment reset. Only used if @single_object_mode is 2.
 
-            gripper_visualization (bool): True if using gripper visualization.
-                Useful for teleoperation.
+                gripper_visualization (bool): True if using gripper visualization.
+                    Useful for teleoperation.
 
-            use_indicator_object (bool): if True, sets up an indicator object that 
-                is useful for debugging.
+                use_indicator_object (bool): if True, sets up an indicator object that 
+                    is useful for debugging.
 
-            has_renderer (bool): If true, render the simulation state in
-                a viewer instead of headless mode.
+                has_renderer (bool): If true, render the simulation state in
+                    a viewer instead of headless mode.
 
-            has_offscreen_renderer (bool): True if using off-screen rendering.
+                has_offscreen_renderer (bool): True if using off-screen rendering.
 
-            render_collision_mesh (bool): True if rendering collision meshes 
-                in camera. False otherwise.
+                render_collision_mesh (bool): True if rendering collision meshes 
+                    in camera. False otherwise.
 
-            render_visual_mesh (bool): True if rendering visual meshes
-                in camera. False otherwise.
+                render_visual_mesh (bool): True if rendering visual meshes
+                    in camera. False otherwise.
 
-            control_freq (float): how many control signals to receive
-                in every second. This sets the amount of simulation time
-                that passes between every action input.
+                control_freq (float): how many control signals to receive
+                    in every second. This sets the amount of simulation time
+                    that passes between every action input.
 
-            horizon (int): Every episode lasts for exactly @horizon timesteps.
+                horizon (int): Every episode lasts for exactly @horizon timesteps.
 
-            ignore_done (bool): True if never terminating the environment (ignore @horizon).
+                ignore_done (bool): True if never terminating the environment (ignore @horizon).
 
-            camera_name (str): name of camera to be rendered. Must be
-                set if @use_camera_obs is True.
+                camera_name (str): name of camera to be rendered. Must be
+                    set if @use_camera_obs is True.
 
-            camera_height (int): height of camera frame.
+                camera_height (int): height of camera frame.
 
-            camera_width (int): width of camera frame.
+                camera_width (int): width of camera frame.
 
-            camera_depth (bool): True if rendering RGB-D, and RGB otherwise.
+                camera_depth (bool): True if rendering RGB-D, and RGB otherwise.
         """
-
         # task settings
         self.single_object_mode = single_object_mode
         self.object_to_id = {"milk": 0, "bread": 1, "cereal": 2, "can": 3}
@@ -184,20 +183,22 @@ class SawyerPickPlace(SawyerEnv):
         ]
 
     def _load_model(self):
+        """ Load MuJoCo robot and object models
+            - Set base position
+            - Initialize arena
+            - Initialize Pick and Place task
+        """
         super()._load_model()
         self.mujoco_robot.set_base_xpos([0, 0, 0])
-
         # load model for table top workspace
         self.mujoco_arena = BinsArena(
             table_full_size=self.table_full_size, table_friction=self.table_friction
         )
-
         if self.use_indicator_object:
             self.mujoco_arena.add_pos_indicator()
-
         # The sawyer robot has a pedestal, we want to align it with the table
         self.mujoco_arena.set_origin([.5, -0.3, 0])
-
+        # Initialize virtual objects
         self.ob_inits = [MilkObject, BreadObject, CerealObject, CanObject]
         self.vis_inits = [
             MilkVisualObject,
@@ -250,6 +251,8 @@ class SawyerPickPlace(SawyerEnv):
                 self.sim.forward()
 
     def _get_reference(self):
+        """ Retrieve target locations
+        """
         super()._get_reference()
         self.obj_body_id = {}
         self.obj_geom_id = {}
@@ -289,7 +292,6 @@ class SawyerPickPlace(SawyerEnv):
 
     def _reset_internal(self):
         super()._reset_internal()
-
         # reset positions of objects, and move objects out of the scene depending on the mode
         self.model.place_objects()
         if self.single_object_mode == 1:
@@ -303,24 +305,20 @@ class SawyerPickPlace(SawyerEnv):
         # compute sparse rewards
         self._check_success()
         reward = np.sum(self.objects_in_bins)
-
-        # add in shaped rewards
+        # add in shaped rewards (adds dense rewards)
         if self.reward_shaping:
             staged_rewards = self.staged_rewards()
             reward += max(staged_rewards)
         return reward
 
     def staged_rewards(self):
+        """ Returns staged rewards based on current physical states.
+            Stages consist of reaching, grasping, lifting, and hovering.
         """
-        Returns staged rewards based on current physical states.
-        Stages consist of reaching, grasping, lifting, and hovering.
-        """
-
         reach_mult = 0.1
         grasp_mult = 0.35
         lift_mult = 0.5
         hover_mult = 0.7
-
         # filter out objects that are already in the correct bins
         objs_to_reach = []
         geoms_to_grasp = []
@@ -333,7 +331,6 @@ class SawyerPickPlace(SawyerEnv):
             geoms_to_grasp.append(self.obj_geom_id[obj_str])
             target_bin_placements.append(self.target_bin_placements[i])
         target_bin_placements = np.array(target_bin_placements)
-
         ### reaching reward governed by distance to closest object ###
         r_reach = 0.
         if len(objs_to_reach):
@@ -344,7 +341,6 @@ class SawyerPickPlace(SawyerEnv):
                 target_object_pos - gripper_site_pos.reshape(1, -1), axis=1
             )
             r_reach = (1 - np.tanh(10.0 * min(dists))) * reach_mult
-
         ### grasping reward for touching any objects of interest ###
         touch_left_finger = False
         touch_right_finger = False
@@ -364,7 +360,6 @@ class SawyerPickPlace(SawyerEnv):
                     touch_right_finger = True
         has_grasp = touch_left_finger and touch_right_finger
         r_grasp = int(has_grasp) * grasp_mult
-
         ### lifting reward for picking up an object ###
         r_lift = 0.
         if len(objs_to_reach) and r_grasp > 0.:
@@ -374,7 +369,6 @@ class SawyerPickPlace(SawyerEnv):
             r_lift = grasp_mult + (1 - np.tanh(15.0 * min(z_dists))) * (
                 lift_mult - grasp_mult
             )
-
         ### hover reward for getting object above bin ###
         r_hover = 0.
         if len(objs_to_reach):
@@ -402,48 +396,59 @@ class SawyerPickPlace(SawyerEnv):
                 1 - np.tanh(10.0 * dists[objects_not_above_bins])
             ) * (hover_mult - lift_mult)
             r_hover = np.max(r_hover_all)
-
         return r_reach, r_grasp, r_lift, r_hover
 
     def not_in_bin(self, obj_pos, bin_id):
+        """ Computes if object in target or not
 
+            Returns
+            -----
+            bool
+                True when object not in bin
+        """
+        # Bin coordinates calculation
         bin_x_low = self.bin_pos[0]
         bin_y_low = self.bin_pos[1]
         if bin_id == 0 or bin_id == 2:
             bin_x_low -= self.bin_size[0] / 2
         if bin_id < 2:
             bin_y_low -= self.bin_size[1] / 2
-
         bin_x_high = bin_x_low + self.bin_size[0] / 2
         bin_y_high = bin_y_low + self.bin_size[1] / 2
-
         res = True
-        if (
-            obj_pos[2] > self.bin_pos[2]
+        # Verifies if object in the bin
+        if (obj_pos[2] > self.bin_pos[2]
             and obj_pos[0] < bin_x_high
             and obj_pos[0] > bin_x_low
             and obj_pos[1] < bin_y_high
             and obj_pos[1] > bin_y_low
-            and obj_pos[2] < self.bin_pos[2] + 0.1
-        ):
+            and obj_pos[2] < self.bin_pos[2] + 0.1):
             res = False
         return res
 
     def _get_observation(self):
-        """
-        Returns an OrderedDict containing observations [(name_string, np.array), ...].
+        """ Retrieves observation
         
-        Important keys:
-            robot-state: contains robot-centric information.
-            object-state: requires @self.use_object_obs to be True.
-                contains object-centric information.
-            image: requires @self.use_camera_obs to be True.
-                contains a rendered frame from the simulation.
-            depth: requires @self.use_camera_obs and @self.camera_depth to be True.
-                contains a rendered depth map from the simulation
+            Returns
+            -----
+            collections.OrderedDict 
+                Containing observations [(name_string, np.array), ...].
+        
+            Important keys:
+                robot-state: contains robot-centric 
+                    information.
+                object-state: requires @self.use_object_obs 
+                    to be True. Contains object-centric information.
+                image: requires @self.use_camera_obs to be True.
+                    contains a rendered frame from the simulation.
+                depth: requires @self.use_camera_obs 
+                    and @self.camera_depth to be True. Contains 
+                    a rendered depth map from the simulation.
         """
+        # Call SawyerEnv._get_observation() method
         di = super()._get_observation()
         if self.use_camera_obs:
+            # Sim rendering to fetch image
             camera_obs = self.sim.render(
                 camera_name=self.camera_name,
                 width=self.camera_width,
@@ -454,23 +459,19 @@ class SawyerPickPlace(SawyerEnv):
                 di["image"], di["depth"] = camera_obs
             else:
                 di["image"] = camera_obs
-
         # low-level object information
         if self.use_object_obs:
-
             # remember the keys to collect into object info
             object_state_keys = []
-
             # for conversion to relative gripper frame
             gripper_pose = T.pose2mat((di["eef_pos"], di["eef_quat"]))
             world_pose_in_gripper = T.pose_inv(gripper_pose)
-
+            # For each possible object in scene
             for i in range(len(self.item_names_org)):
-
                 if self.single_object_mode == 2 and self.object_id != i:
                     # Skip adding to observations
                     continue
-
+                # Object information computation
                 obj_str = str(self.item_names_org[i]) + "0"
                 obj_pos = np.array(self.sim.data.body_xpos[self.obj_body_id[obj_str]])
                 obj_quat = T.convert_quat(
@@ -478,19 +479,16 @@ class SawyerPickPlace(SawyerEnv):
                 )
                 di["{}_pos".format(obj_str)] = obj_pos
                 di["{}_quat".format(obj_str)] = obj_quat
-
                 # get relative pose of object in gripper frame
                 object_pose = T.pose2mat((obj_pos, obj_quat))
                 rel_pose = T.pose_in_A_to_pose_in_B(object_pose, world_pose_in_gripper)
                 rel_pos, rel_quat = T.mat2pose(rel_pose)
                 di["{}_to_eef_pos".format(obj_str)] = rel_pos
                 di["{}_to_eef_quat".format(obj_str)] = rel_quat
-
                 object_state_keys.append("{}_pos".format(obj_str))
                 object_state_keys.append("{}_quat".format(obj_str))
                 object_state_keys.append("{}_to_eef_pos".format(obj_str))
                 object_state_keys.append("{}_to_eef_quat".format(obj_str))
-
             if self.single_object_mode == 1:
                 # Zero out other objects observations
                 for obj_str, obj_mjcf in self.mujoco_objects.items():
@@ -501,21 +499,16 @@ class SawyerPickPlace(SawyerEnv):
                         di["{}_quat".format(obj_str)] *= 0.0
                         di["{}_to_eef_pos".format(obj_str)] *= 0.0
                         di["{}_to_eef_quat".format(obj_str)] *= 0.0
-
             di["object-state"] = np.concatenate([di[k] for k in object_state_keys])
-
         return di
 
     def _check_contact(self):
-        """
-        Returns True if gripper is in contact with an object.
+        """ Returns True if gripper is in contact with an object.
         """
         collision = False
         for contact in self.sim.data.contact[: self.sim.data.ncon]:
-            if (
-                self.sim.model.geom_id2name(contact.geom1) in self.finger_names
-                or self.sim.model.geom_id2name(contact.geom2) in self.finger_names
-            ):
+            if (self.sim.model.geom_id2name(contact.geom1) in self.finger_names
+                    or self.sim.model.geom_id2name(contact.geom2) in self.finger_names):
                 collision = True
                 break
         return collision
@@ -524,7 +517,6 @@ class SawyerPickPlace(SawyerEnv):
         """
         Returns True if task has been completed.
         """
-
         # remember objects that are in the correct bins
         gripper_site_pos = self.sim.data.site_xpos[self.eef_site_id]
         for i in range(len(self.ob_inits)):
@@ -535,17 +527,15 @@ class SawyerPickPlace(SawyerEnv):
             self.objects_in_bins[i] = int(
                 (not self.not_in_bin(obj_pos, i)) and r_reach < 0.6
             )
-
         # returns True if a single object is in the correct bin
         if self.single_object_mode == 1 or self.single_object_mode == 2:
             return np.sum(self.objects_in_bins) > 0
-
         # returns True if all objects are in correct bins
         return np.sum(self.objects_in_bins) == len(self.ob_inits)
 
     def _gripper_visualization(self):
-        """
-        Do any needed visualization here. Overrides superclass implementations.
+        """ Do any needed visualization here. 
+            Overrides superclass implementations.
         """
         # color the gripper site appropriately based on distance to nearest object
         if self.gripper_visualization:
@@ -562,7 +552,6 @@ class SawyerPickPlace(SawyerEnv):
             min_dist = np.min(ob_dists)
             ob_id = np.argmin(ob_dists)
             ob_name = self.object_names[ob_id]
-
             # set RGBA for the EEF site here
             max_dist = 0.1
             scaled = (1.0 - min(min_dist / max_dist, 1.)) ** 15
@@ -570,9 +559,49 @@ class SawyerPickPlace(SawyerEnv):
             rgba[0] = 1 - scaled
             rgba[1] = scaled
             rgba[3] = 0.5
-
             self.sim.model.site_rgba[self.eef_site_id] = rgba
+    
+    def reset(self):
+        """ Reset with EEF - Object graph relations computation
 
+            Returns
+            ----
+            tuple
+                (node_attrs, edge_attrs, image)
+                where: 
+                    node_attrs: [
+                        np.concatenate([<position>,
+                                        <orientation>,
+                                        <object_one_hot>
+                                        ]),  # For End efector
+                        np.concatenate([<position>,<orientation>,
+                                        <object_one_hot>
+                                        ])  # For each Object in scene
+                    ],
+                    edge_attrs : [
+                        np.concatenate([<relation_one_hot>,
+                                        <relation_one_hot>
+                                        ]) # For each object-eef interaction
+                    ],
+                    image : np.array([...])
+        """
+        _reset = super().reset()
+        # Add graph relation computation
+        print("Computing graph relations")
+        return _reset
+
+    def step(self, actions):
+        """ Step with EEF - Object graph relation computation  
+
+            Returns
+            ------
+            tuple
+                (node_attrs, edge_attrs, image)  # Same as @self.reset
+        """
+        _step = super().step()
+        # Add graph relation computaton
+        print("Cmputing graph relations")
+        return _step
 
 class SawyerPickPlaceSingle(SawyerPickPlace):
     """
