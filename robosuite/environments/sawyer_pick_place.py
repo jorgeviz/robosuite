@@ -620,6 +620,8 @@ class SawyerPickPlace(SawyerEnv):
         _img =  np.flipud(
             np.flip(obs['image'],2) 
             ).copy()
+        # Clean O2O object
+        del rob2obj
         # Accumulate State
         return self.gen_graph_tuple(_state, _img)
     
