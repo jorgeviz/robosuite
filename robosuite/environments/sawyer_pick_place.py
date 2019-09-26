@@ -563,6 +563,33 @@ class SawyerPickPlace(SawyerEnv):
             rgba[1] = scaled
             rgba[3] = 0.5
             self.sim.model.site_rgba[self.eef_site_id] = rgba
+    
+    def retrieve_bboxes(self, obs):
+        """ Finds the bbox from object of interest
+            and sawyer eef
+
+             Args
+            -----
+            obs : collections.OrderedDict
+                Observations attributes (image, joint pos, etc)
+            
+            Returns
+            -----
+            tuple
+                (bbox_eef, bbox_obj)
+        """
+        # Fetch object sphere radius
+        r_ob_sph = self.obj_model.geom_rbound[0]
+        r_saw_sphs = np.array([
+                    self.sawy_model.geom_rbound[ self.sawy_model.geom_name2id(_ns) 
+                ] \
+                for _ns  in self.sawy_model.geom_names
+        ])
+        # Bbox computation
+        obj_bbox = self.find_bbox(obs[self.obj_to_use+'_pos'], r_ob_sph)
+        eef_bbox =  self.find_bbox(obs['eef_pos'], r_saw_sphs.max(), 
+            avoid_axis=[-3], scale_axis=[3])
+        return eef_bbox, obj_bbox
 
     def process_obs(self, obs):
         """ Process state observation
@@ -577,23 +604,14 @@ class SawyerPickPlace(SawyerEnv):
             obs : collections.OrderedDict
                 Observations attributes (image, joint pos, etc)
         """
-        # Fetch object sphere radius
-        r_ob_sph = self.obj_model.geom_rbound[0]
-        r_saw_sphs = np.array([
-                    self.sawy_model.geom_rbound[ self.sawy_model.geom_name2id(_ns) 
-                ] \
-                for _ns  in self.sawy_model.geom_names
-        ])
-        _state = {}
-        # Bbox computation
-        obj_bbox = self.find_bbox(obs[self.obj_to_use+'_pos'], r_ob_sph)
-        eef_bbox =  self.find_bbox(obs['eef_pos'], r_saw_sphs.max(), 
-            avoid_axis=[-3], scale_axis=[3])
+        # BBox computation
+        eef_bbox, obj_bbox = self.retrieve_bboxes(obs)
         # Compute relationships
         robp = SO("eef", obs['eef_pos'], obs['eef_quat'], is_robot=True)
         objp = SO(self.object_type, obs[self.obj_to_use+'_pos'], 
                 obs[self.obj_to_use+'_quat'])
         rob2obj = O2ORelation(robp, objp)
+        _state = {}
         # Append States
         _state['obj'] = {
             'bbox': np.array(obj_bbox), 
