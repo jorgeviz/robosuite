@@ -607,7 +607,8 @@ class SawyerPickPlace(SawyerEnv):
             'pos': obs['eef_pos'],
             'quat': obs['eef_quat'],
             'state': obs['robot-state'],
-            'encoding': robp.encoding
+            'encoding': robp.encoding,
+            'gripper_pos': obs['gripper_qpos']
         }
         _state['relation'] = {
             "state": rob2obj.rep,
@@ -635,9 +636,9 @@ class SawyerPickPlace(SawyerEnv):
                 where 
                     node_attrs: [
                         np.concatenate([<position>,<orientation>,
-                            <object_one_hot>,<object_bbox>]),  # For End efector
+                            <object_one_hot>,<object_bbox>,<gripper_pos>]),  # For End efector
                         np.concatenate([<position>,<orientation>,
-                            <object_one_hot>,<object_bbox>])  # For each Object in scene
+                            <object_one_hot>,<object_bbox>,<zero_vector>])  # For each Object in scene
                     ],
                     edge_attrs : [
                         np.concatenate([<relation_one_hot>,<relation_one_hot>]) # For each object-eef interaction
@@ -646,9 +647,11 @@ class SawyerPickPlace(SawyerEnv):
         """
         node_attrs = np.array([
             np.concatenate((_st['eef']['pos'], _st['eef']['quat'], 
-                            _st['eef']['encoding'], _st['eef']['bbox'])),
+                            _st['eef']['encoding'], _st['eef']['bbox'],
+                            _st['eef']['gripper_pos'])), # robot
             np.concatenate((_st['obj']['pos'], _st['obj']['quat'], 
-                            _st['obj']['encoding'], _st['obj']['bbox']))
+                            _st['obj']['encoding'], _st['obj']['bbox'],
+                            np.array([0.,0.]) )) # object
         ])
         edge_attrs = []
         for f_idx in range(len(node_attrs)):
