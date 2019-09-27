@@ -564,7 +564,7 @@ class SawyerPickPlace(SawyerEnv):
             rgba[3] = 0.5
             self.sim.model.site_rgba[self.eef_site_id] = rgba
     
-    def retrieve_bboxes(self, obs):
+    def _retrieve_bboxes(self, obs):
         """ Finds the bbox from object of interest
             and sawyer eef
 
@@ -590,6 +590,25 @@ class SawyerPickPlace(SawyerEnv):
         eef_bbox =  self.find_bbox(obs['eef_pos'], r_saw_sphs.max(), 
             avoid_axis=[-3], scale_axis=[3])
         return eef_bbox, obj_bbox
+    
+    def _compute_relation(self, obs):
+        """ Compute relation between eef and object
+
+            Args
+            -----
+            obs : collections.OrderedDict
+                Observations attributes (image, joint pos, etc)
+            
+            Returns
+            -----
+            tuple
+                (robot_so, object_so, o2orelation)
+        """
+        robp = SO("eef", obs['eef_pos'], obs['eef_quat'], is_robot=True)
+        objp = SO(self.object_type, obs[self.obj_to_use+'_pos'], 
+                obs[self.obj_to_use+'_quat'])
+        rob2obj = O2ORelation(robp, objp)
+        return robp, objp, rob2obj
 
     def process_obs(self, obs):
         """ Process state observation
@@ -605,12 +624,9 @@ class SawyerPickPlace(SawyerEnv):
                 Observations attributes (image, joint pos, etc)
         """
         # BBox computation
-        eef_bbox, obj_bbox = self.retrieve_bboxes(obs)
+        eef_bbox, obj_bbox = self._retrieve_bboxes(obs)
         # Compute relationships
-        robp = SO("eef", obs['eef_pos'], obs['eef_quat'], is_robot=True)
-        objp = SO(self.object_type, obs[self.obj_to_use+'_pos'], 
-                obs[self.obj_to_use+'_quat'])
-        rob2obj = O2ORelation(robp, objp)
+        robp, objp, rob2obj = self._compute_relation(obs)
         _state = {}
         # Append States
         _state['obj'] = {
@@ -634,7 +650,7 @@ class SawyerPickPlace(SawyerEnv):
         }
         if 'image' not in obs:
             print("[WARNING] Not generating any image data!")
-            _img = np.empty((CAMERA['height'], CAMERA['width'], 3))
+            _img = np.empty((self.camera_height, self.camera_width, 3))
         # Flip colors order and put image upside down
         _img =  np.flipud(
             np.flip(obs['image'],2) 
