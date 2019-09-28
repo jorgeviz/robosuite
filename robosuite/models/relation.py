@@ -9,7 +9,7 @@ from collections import OrderedDict
 # Params
 OBJ_W_SIZE = 0.02  # Object width size
 NEAR_DIST_TH = 0.1  # Near distance threshold
-HOLD_DIST_TH = 0.01 # Holding distance threshold
+HOLD_DIST_TH = 0.02 # Holding distance threshold
 IN_DIST_TH = 0.01 # Object in target distance threshold
 
 class SpatialObject(object):
