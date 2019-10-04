@@ -16,7 +16,7 @@ class PickPlaceTask(Task):
     """
 
     def __init__(self, mujoco_arena, mujoco_robot, mujoco_objects, visual_objects, 
-            obj_in_use, obj_fixed_loc, placement_type=None):
+            obj_id, obj_fixed_loc, placement_type=None):
         """
         Args:
             mujoco_arena: MJCF model of robot workspace
@@ -40,7 +40,7 @@ class PickPlaceTask(Task):
         self.merge_objects(mujoco_objects)
         self.merge_visual(OrderedDict(visual_objects))
         self.visual_objects = visual_objects
-        self.obj_in_use = obj_in_use
+        self.obj_id = obj_id
         self.obj_fixed_loc = obj_fixed_loc
         self.placement_type = placement_type
 
@@ -149,7 +149,7 @@ class PickPlaceTask(Task):
             bottom_offset = obj_mjcf.get_bottom_offset()
             success = False
             # Fixing position of defined object
-            if _ == self.obj_in_use:
+            if index == self.obj_id:
                 pos = self.obj_fixed_loc[0]
                 placed_objects.append((pos, horizontal_radius))
                 self.objects[index].set("pos", array_to_string(pos))
