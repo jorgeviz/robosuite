@@ -42,7 +42,7 @@ class PickPlaceTask(Task):
         self.visual_objects = visual_objects
         self.obj_in_use = obj_in_use
         self.obj_fixed_loc = obj_fixed_loc
-        self.placement_type = None
+        self.placement_type = placement_type
 
     def merge_robot(self, mujoco_robot):
         """Adds robot model to the MJCF model."""
