@@ -152,6 +152,11 @@ class SawyerPickPlace(SawyerEnv):
         # whether to use ground-truth object states
         self.use_object_obs = use_object_obs
 
+        # Object placemenet
+        self.placement_initializer = placement_initializer
+        if object_fix_loc is not None:
+            self.object_fix_loc = object_fix_loc
+
         super().__init__(
             gripper_type=gripper_type,
             gripper_visualization=gripper_visualization,
@@ -187,10 +192,6 @@ class SawyerPickPlace(SawyerEnv):
         self.collision_check_geom_ids = [
             self.sim.model._geom_name2id[k] for k in self.collision_check_geom_names
         ]
-        # Object placemenet
-        self.placement_initializer = placement_initializer
-        if object_fix_loc is not None:
-            self.object_fix_loc = object_fix_loc
 
     def _load_model(self):
         """ Load MuJoCo robot and object models
