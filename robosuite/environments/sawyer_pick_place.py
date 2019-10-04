@@ -50,6 +50,7 @@ class SawyerPickPlace(SawyerEnv):
         camera_height=256,
         camera_width=256,
         camera_depth=False,
+        object_fix_loc=None
         ):
         """
             Args:
@@ -123,6 +124,8 @@ class SawyerPickPlace(SawyerEnv):
                 camera_width (int): width of camera frame.
 
                 camera_depth (bool): True if rendering RGB-D, and RGB otherwise.
+
+                object_fix_loc (tuple): Tuple with 2 np.arrays, 3-D for position and 4-D for quaternion
         """
         # task settings
         self.single_object_mode = single_object_mode
@@ -184,6 +187,10 @@ class SawyerPickPlace(SawyerEnv):
         self.collision_check_geom_ids = [
             self.sim.model._geom_name2id[k] for k in self.collision_check_geom_names
         ]
+        # Object placemenet
+        self.placement_initializer = placement_initializer
+        if object_fix_loc is not None:
+            self.object_fix_loc = object_fix_loc
 
     def _load_model(self):
         """ Load MuJoCo robot and object models
@@ -232,6 +239,9 @@ class SawyerPickPlace(SawyerEnv):
             self.mujoco_robot,
             self.mujoco_objects,
             self.visual_objects,
+            self.obj_to_use,
+            self.object_fixed_loc,
+            None if not self.placement_initializer else 'fix'  # this is set to fix if placement_initializer is defined
         )
         self.model.place_objects()
         self.model.place_visual()
