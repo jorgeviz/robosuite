@@ -241,7 +241,7 @@ class SawyerPickPlace(SawyerEnv):
             self.mujoco_objects,
             self.visual_objects,
             self.obj_to_use,
-            self.object_fixed_loc,
+            self.object_fix_loc,
             None if not self.placement_initializer else 'fix'  # this is set to fix if placement_initializer is defined
         )
         self.model.place_objects()
