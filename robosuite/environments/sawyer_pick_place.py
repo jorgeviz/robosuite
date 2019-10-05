@@ -154,8 +154,7 @@ class SawyerPickPlace(SawyerEnv):
 
         # Object placemenet
         self.placement_initializer = placement_initializer
-        if object_fix_loc is not None:
-            self.object_fix_loc = object_fix_loc
+        self.object_fix_loc = object_fix_loc
 
         super().__init__(
             gripper_type=gripper_type,
