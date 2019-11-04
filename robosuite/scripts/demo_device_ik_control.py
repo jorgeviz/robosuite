@@ -75,7 +75,7 @@ if __name__ == "__main__":
     elif args.device == "spacemouse":
         from robosuite.devices import SpaceMouse
 
-        device = SpaceMouse()
+        device = SpaceMouse(vendor_id=9583, product_id=50741)
     else:
         raise Exception(
             "Invalid device choice: choose either 'keyboard' or 'spacemouse'."
