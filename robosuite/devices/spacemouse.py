@@ -156,19 +156,25 @@ class SpaceMouse(Device):
         """Listener method that keeps pulling new messages."""
 
         t_last_click = -1
-
         while True:
-            d = self.device.read(13)
+            d = self.device.read(8)
+            print("reading len", len(d))
             if d is not None and self._enabled:
-
                 if d[0] == 1:  ## readings from 6-DoF sensor
-                    self.y = convert(d[1], d[2])
+                    d_2 = self.device.read(8) # Read orientation pkg
+                    # self.y = convert(d[1], d[2])
+                    # self.x = convert(d[3], d[4])
+                    # self.z = convert(d[5], d[6]) * -1.0
                     self.x = convert(d[3], d[4])
+                    self.y = convert(d[1], d[2])
                     self.z = convert(d[5], d[6]) * -1.0
 
-                    self.roll = convert(d[7], d[8])
-                    self.pitch = convert(d[9], d[10])
-                    self.yaw = convert(d[11], d[12])
+                    # self.roll = convert(d[7], d[8])
+                    # self.pitch = convert(d[9], d[10])
+                    # self.yaw = convert(d[11], d[12])
+                    self.roll = convert(d_2[1], d_2[2])
+                    self.pitch = convert(d_2[3], d_2[4])
+                    self.yaw = convert(d_2[5], d_2[6])
 
                     self._control = [
                         self.x,
@@ -180,7 +186,7 @@ class SpaceMouse(Device):
                     ]
 
                 elif d[0] == 3:  ## readings from the side buttons
-
+                    print("Reading from buttons")
                     # press left button
                     if d[1] == 1:
                         t_click = time.time()
@@ -190,10 +196,12 @@ class SpaceMouse(Device):
 
                     # release left button
                     if d[1] == 0:
+                        print("Release left button")
                         self.single_click_and_hold = False
 
                     # right button is for reset
                     if d[1] == 2:
+                        print("Release right button")
                         self._reset_state = 1
                         self._enabled = False
                         self._reset_internal_state()
@@ -213,7 +221,9 @@ class SpaceMouse(Device):
 
 if __name__ == "__main__":
 
-    space_mouse = SpaceMouse()
-    for i in range(100):
+    # space_mouse = SpaceMouse()
+    # space_mouse = SpaceMouse(vendor_id=1133, product_id=50732)
+    space_mouse = SpaceMouse(vendor_id=9583, product_id=50741)
+    for i in range(1000):
         print(space_mouse.control, space_mouse.control_gripper)
         time.sleep(0.02)
