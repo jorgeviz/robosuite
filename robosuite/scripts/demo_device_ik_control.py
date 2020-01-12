@@ -49,13 +49,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--environment", type=str, default="SawyerPickPlaceCan")
     parser.add_argument("--device", type=str, default="keyboard")
+    parser.add_argument("--mode", type=str, default="mixed")
     args = parser.parse_args()
 
     env = robosuite.make(
         args.environment,
         has_renderer=True,
         ignore_done=True,
-        use_camera_obs=False,
+        use_camera_obs=False, # False
         gripper_visualization=True,
         reward_shaping=True,
         control_freq=100,
@@ -76,6 +77,14 @@ if __name__ == "__main__":
         from robosuite.devices import SpaceMouse
 
         device = SpaceMouse(vendor_id=9583, product_id=50741)
+    elif args.device == "spacemouse_keyboard":
+        from robosuite.devices import MixedSpaceMouseKeyboard
+
+        device = MixedSpaceMouseKeyboard(sm_vendor_id=9583, 
+            sm_product_id=50741, mode=args.mode)
+        env.viewer.add_keypress_callback("any", device.on_press)
+        env.viewer.add_keyup_callback("any", device.on_release)
+        env.viewer.add_keyrepeat_callback("any", device.on_press)
     else:
         raise Exception(
             "Invalid device choice: choose either 'keyboard' or 'spacemouse'."
@@ -91,13 +100,16 @@ if __name__ == "__main__":
 
         device.start_control()
         while True:
-            state = device.get_controller_state()
+            i
             dpos, rotation, grasp, reset = (
                 state["dpos"],
                 state["rotation"],
                 state["grasp"],
                 state["reset"],
             )
+            # print("Diff pos", dpos)
+            # print("Rotation", rotation)
+            # print("Grasp", grasp)
             if reset:
                 break
 
@@ -114,3 +126,5 @@ if __name__ == "__main__":
             action = np.concatenate([dpos, dquat, [grasp]])
             obs, reward, done, info = env.step(action)
             env.render()
+    # Close open connections
+    device.close()

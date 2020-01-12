@@ -40,6 +40,7 @@ if __name__ == "__main__":
 
     # do visualization
     for i in range(1000):
+        import ipdb; ipdb.set_trace()
         action = np.random.randn(env.dof)
         obs, reward, done, _ = env.step(action)
         env.render()

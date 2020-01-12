@@ -739,7 +739,8 @@ class SawyerPickPlace(SawyerEnv):
         _reset_obs = super().reset()
         # Image and states existance
         if not self.use_camera_obs or not self.use_object_obs:
-            raise Exception("Enable `use_camera_obs` and `use_object_obs`!")
+            print("[WARNING] Enable `use_camera_obs` and `use_object_obs`!")
+            return _reset_obs
         # Add graph relation computation
         _reset_obs['graph'] =  self.process_obs(_reset_obs)
         return _reset_obs
@@ -755,7 +756,8 @@ class SawyerPickPlace(SawyerEnv):
         _step_obs, rew, _done, _ = super().step(actions)
         # Image and states existance
         if not self.use_camera_obs or not self.use_object_obs:
-            raise Exception("Enable `use_camera_obs` and `use_object_obs`!")
+            print("[WARNING] Enable `use_camera_obs` and `use_object_obs`!")
+            return _step_obs, rew, _done, _
         # Add graph relation computaton
         _step_obs['graph'] = self.process_obs(_step_obs)
         return _step_obs, rew, _done, _

@@ -33,12 +33,22 @@ from robosuite.devices import Device
 AxisSpec = namedtuple("AxisSpec", ["channel", "byte1", "byte2", "scale"])
 
 SPACE_MOUSE_SPEC = {
-    "x": AxisSpec(channel=1, byte1=1, byte2=2, scale=1),
-    "y": AxisSpec(channel=1, byte1=3, byte2=4, scale=-1),
-    "z": AxisSpec(channel=1, byte1=5, byte2=6, scale=-1),
-    "roll": AxisSpec(channel=1, byte1=7, byte2=8, scale=-1),
-    "pitch": AxisSpec(channel=1, byte1=9, byte2=10, scale=-1),
-    "yaw": AxisSpec(channel=1, byte1=11, byte2=12, scale=1),
+    "SpaceMouse Wireless": {
+        "x": AxisSpec(channel=1, byte1=1, byte2=2, scale=1),
+        "y": AxisSpec(channel=1, byte1=3, byte2=4, scale=-1),
+        "z": AxisSpec(channel=1, byte1=5, byte2=6, scale=-1),
+        "roll": AxisSpec(channel=1, byte1=7, byte2=8, scale=-1),
+        "pitch": AxisSpec(channel=1, byte1=9, byte2=10, scale=-1),
+        "yaw": AxisSpec(channel=1, byte1=11, byte2=12, scale=1),
+    },
+    "SpaceMouse Compact":  {
+        "x": AxisSpec(channel=1, byte1=3, byte2=4, scale=1),
+        "y": AxisSpec(channel=1, byte1=1, byte2=2, scale=1),
+        "z": AxisSpec(channel=1, byte1=5, byte2=6, scale=-1),
+        "roll": AxisSpec(channel=1, byte1=7, byte2=8, scale=1),
+        "pitch": AxisSpec(channel=1, byte1=9, byte2=10, scale=1),
+        "yaw": AxisSpec(channel=1, byte1=11, byte2=12, scale=1),
+    }
 }
 
 
@@ -57,15 +67,15 @@ def scale_to_control(x, axis_scale=350., min_v=-1.0, max_v=1.0):
     return x
 
 
-def convert(b1, b2):
+def convert(b1, b2, scale=2.0):
     """Converts SpaceMouse message to commands."""
-    return scale_to_control(to_int16(b1, b2))
+    return scale_to_control(to_int16(b1, b2), axis_scale=scale)
 
 
 class SpaceMouse(Device):
     """A minimalistic driver class for SpaceMouse with HID library."""
 
-    def __init__(self, vendor_id=9583, product_id=50735):
+    def __init__(self, vendor_id=9583, product_id=50735, listener=True):
         """Initialize a SpaceMouse handler.
 
         Args:
@@ -95,9 +105,10 @@ class SpaceMouse(Device):
         self._enabled = False
 
         # launch a new listener thread to listen to SpaceMouse
-        self.thread = threading.Thread(target=self.run)
-        self.thread.daemon = True
-        self.thread.start()
+        if listener:
+            self.thread = threading.Thread(target=self.run)
+            self.thread.daemon = True
+            self.thread.start()
 
     def _display_controls(self):
         """
@@ -158,7 +169,8 @@ class SpaceMouse(Device):
         t_last_click = -1
         while True:
             d = self.device.read(8)
-            print("reading len", len(d))
+            print("Reading original")
+            # print("reading len", len(d))
             if d is not None and self._enabled:
                 if d[0] == 1:  ## readings from 6-DoF sensor
                     d_2 = self.device.read(8) # Read orientation pkg
